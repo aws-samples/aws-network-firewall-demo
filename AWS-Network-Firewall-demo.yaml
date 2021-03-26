@@ -15,7 +15,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          CidrIp: 10.0.0.0/16
+          CidrIp: 10.0.0.0/24
         SecurityGroupEgress:
           - IpProtocol: -1
             FromPort: -1
@@ -82,6 +82,28 @@ Resources:
       Tags:
         - Key: Name
           Value: "Network Firewall VPC"
+
+  MyFlowLogDeliveringToS3:
+    Type: AWS::EC2::FlowLog
+    Properties: 
+      ResourceId: !Ref VPC
+      ResourceType: VPC
+      TrafficType: ALL
+      LogDestination: !GetAtt MyS3Bucket.Arn
+      LogDestinationType: s3
+
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption: 
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
 
   FirewallSubnet:
     Type: AWS::EC2::Subnet
