@@ -83,27 +83,47 @@ Resources:
         - Key: Name
           Value: "Network Firewall VPC"
 
-  MyFlowLogDeliveringToS3:
-    Type: AWS::EC2::FlowLog
-    Properties: 
-      ResourceId: !Ref VPC
+  VPCFlowLogGroup:
+    DependsOn:
+      - AWSNetworkFirewallLogGroupKMSkey
+    Type: AWS::Logs::LogGroup
+    Properties:
+      KmsKeyId: !GetAtt AWSNetworkFirewallLogGroupKMSkey.Arn
+      RetentionInDays: 3
+  
+  VPCFlowLog:
+    Type: 'AWS::EC2::FlowLog'
+    Properties:
+      DeliverLogsPermissionArn: !GetAtt 'VPCFlowLogRole.Arn'
+      LogGroupName: !Ref VPCFlowLogGroup
+      ResourceId : !Ref VPC
       ResourceType: VPC
       TrafficType: ALL
-      LogDestination: !GetAtt MyS3Bucket.Arn
-      LogDestinationType: s3
 
-  MyS3Bucket:
-    Type: AWS::S3::Bucket
+  VPCFlowLogRole:
+    Type: 'AWS::IAM::Role'
     Properties:
-      BucketEncryption: 
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
-      PublicAccessBlockConfiguration:
-          BlockPublicAcls: true
-          BlockPublicPolicy: true
-          IgnorePublicAcls: true
-          RestrictPublicBuckets: true
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - 'vpc-flow-logs.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: 'flowlogs-policy'
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'logs:CreateLogGroup'
+            - 'logs:CreateLogStream'
+            - 'logs:PutLogEvents'
+            - 'logs:DescribeLogGroups'
+            - 'logs:DescribeLogStreams'
+            Resource: '*'
 
   FirewallSubnet:
     Type: AWS::EC2::Subnet
